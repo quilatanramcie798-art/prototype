@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Learner Attendance & SMS Notification System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script
+      src="https://accounts.google.com/gsi/client"
+      defer
+      onload="initializeGoogleSignIn()"
+      onerror="showGoogleSignInError()"
+    ></script>
+    
+      <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+    <header class="bg-blue-700 text-white shadow-md p-4 sticky top-0 z-50">
+      <div class="max-w-6xl mx-auto flex justify-between items-center">
+        <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <button
+            id="menu-toggle"
+            type="button"
+            onclick="toggleMenu()"
+            aria-controls="sidebar"
+            aria-expanded="false"
+            aria-label="Open section menu"
+          >
+            ☰
+          </button>
+          <span>📱</span> Learner Attendance System
+        </h1>
+        <div class="flex items-center gap-2">
+          <span
+            id="system-time"
+            class="whitespace-nowrap text-xs md:text-sm bg-blue-800 px-3 py-1 rounded-full font-mono"
+            >--:--:--</span
+          >
+          <button
+            id="theme-toggle"
+            type="button"
+            onclick="toggleTheme()"
+            aria-pressed="false"
+            class="shrink-0 whitespace-nowrap text-xs md:text-sm bg-blue-800 hover:bg-blue-900 px-3 py-2 rounded-lg font-semibold"
+          >
+            🌙 Dark
+          </button>
+          <span id="user-badge" class="hidden user-badge"></span>
+          <button
+            id="signout-btn"
+            type="button"
+            onclick="signOut()"
+            class="hidden shrink-0 whitespace-nowrap text-xs md:text-sm bg-blue-800 hover:bg-blue-900 px-3 py-2 rounded-lg font-semibold"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section id="auth-screen" aria-labelledby="auth-title">
+      <svg class="auth-symbol-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+        <symbol id="google-g-mark" viewBox="0 0 48 48">
+          <path d="M24 7a17 17 0 0 0-15.65 10.3" fill="none" stroke="#EA4335" stroke-width="6" stroke-linecap="round" />
+          <path d="M8.35 17.3A17 17 0 0 0 24 41" fill="none" stroke="#FBBC05" stroke-width="6" stroke-linecap="round" />
+          <path d="M24 41a17 17 0 0 0 16.3-12" fill="none" stroke="#34A853" stroke-width="6" stroke-linecap="round" />
+          <path d="M40.3 19A17 17 0 0 0 24 7" fill="none" stroke="#4285F4" stroke-width="6" stroke-linecap="round" />
+          <path d="M24 24h16" fill="none" stroke="#4285F4" stroke-width="6" />
+        </symbol>
+      </svg>
+      <div class="auth-card-frame">
+        <div class="auth-card">
+          <div class="auth-brand-mark" aria-hidden="true">📱</div>
+          <p class="auth-eyebrow">Learner Attendance System</p>
+          <div id="auth-login-view">
+            <h2 id="auth-title" class="mb-2 text-2xl font-bold">Welcome back</h2>
+            <p class="auth-description">
+              Sign in to manage learner records, attendance reports, and SMS settings.
+            </p>
+            <form id="email-auth-form" class="email-auth-form" onsubmit="signInWithEmail(event)">
+              <label class="auth-field-label" for="auth-email">Email address</label>
+              <input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" required />
+              <label class="auth-field-label" for="auth-password">Password</label>
+              <div class="auth-password-wrap">
+                <input id="auth-password" type="password" autocomplete="current-password" minlength="6" placeholder="Enter your password" required />
+                <button type="button" class="password-toggle" onclick="toggleAuthPassword()" aria-label="Show password">Show</button>
+              </div>
+              <div class="auth-form-options">
+                <label><input id="auth-remember" type="checkbox" /> Remember me</label>
+                <button type="button" onclick="forgotPassword()">Forgot password?</button>
+              </div>
+              <button type="submit" class="auth-submit-button">Sign in</button>
+            </form>
+            <p class="auth-signup-prompt">Don't have an account? <button type="button" onclick="showSignUpNotice()">Sign up</button></p>
+            <div class="auth-google-wrap">
+              <svg class="auth-google-logo" aria-hidden="true" viewBox="0 0 48 48"><use href="#google-g-mark"></use></svg>
+              <div id="gsi-button" class="flex justify-center"></div>
+            </div>
+            <div class="auth-divider">OR</div>
+            <button type="button" onclick="continueAsGuest()" class="auth-guest-button">
+              Continue as guest
+            </button>
+          </div>
+          <div id="auth-signup-view" class="hidden">
+            <h2 class="auth-view-title">Create your account</h2>
+            <p class="auth-description">
+              Create a profile for the learner attendance system.
+            </p>
+            <p class="auth-signup-status" role="status" aria-live="polite">
+              Registration is not available yet. Your details will not be submitted.
+            </p>
+            <form id="email-signup-form" class="email-auth-form auth-signup-form" onsubmit="submitSignUp(event)">
+              <div class="auth-field-group">
+                <label class="auth-field-label" for="signup-name">Full name</label>
+                <input id="signup-name" type="text" autocomplete="name" placeholder="Your name" required />
+              </div>
+              <div class="auth-field-group">
+                <label class="auth-field-label" for="signup-email">Email address</label>
+                <input id="signup-email" type="email" autocomplete="email" placeholder="you@example.com" required />
+              </div>
+              <div class="auth-field-group">
+                <label class="auth-field-label" for="signup-password">Password</label>
+                <input id="signup-password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required />
+              </div>
+              <div class="auth-field-group">
+                <label class="auth-field-label" for="signup-password-confirm">Confirm password</label>
+                <input id="signup-password-confirm" type="password" autocomplete="new-password" minlength="8" placeholder="Enter it again" required />
+              </div>
+              <button type="submit" class="auth-submit-button">Create account</button>
+            </form>
+            <div class="auth-signup-provider auth-google-wrap">
+              <svg class="auth-google-logo" aria-hidden="true" viewBox="0 0 48 48"><use href="#google-g-mark"></use></svg>
+              <div id="signup-gsi-button" aria-label="Sign in with Google"></div>
+            </div>
+            <p class="auth-signup-prompt">
+              Already have an account?
+              <button type="button" onclick="showSignInView()">Sign in</button>
+            </p>
+          </div>
+          <p class="auth-footnote">
+           
+          </p>
+          <p id="auth-error" class="mt-4 hidden text-sm font-semibold" role="alert"></p>
+        </div>
+      </div>
+    </section>
+
+    <div id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="app-layout" class="hidden">
+      <nav id="sidebar" aria-label="Main navigation">
+        <div class="site-nav-menu">
+          <button
+            onclick="switchTab('scan-tab')"
+            id="btn-scan-tab"
+            class="tab-btn active-tab"
+            aria-label="Attendance Scanner"
+            title="Attendance Scanner"
+          >
+            <span aria-hidden="true">📷</span>
+            <span class="nav-label">Attendance Scanner</span>
+          </button>
+          <button
+            onclick="switchTab('learners-tab')"
+            id="btn-learners-tab"
+            class="tab-btn"
+            aria-label="Learner Data Sheet"
+            title="Learner Data Sheet"
+          >
+            <span aria-hidden="true">📋</span>
+            <span class="nav-label">Learner Data Sheet</span>
+          </button>
+          <button
+            onclick="switchTab('brigade-tab')"
+            id="btn-brigade-tab"
+            class="tab-btn"
+            aria-label="Text Brigade"
+            title="Text Brigade"
+          >
+            <span aria-hidden="true">🚨</span>
+            <span class="nav-label">Text Brigade</span>
+          </button>
+          <button
+            onclick="switchTab('logs-tab')"
+            id="btn-logs-tab"
+            class="tab-btn"
+            aria-label="Logs and Reports"
+            title="Logs and Reports"
+          >
+            <span aria-hidden="true">📊</span>
+            <span class="nav-label">Logs &amp; Reports</span>
+          </button>
+          <button
+            onclick="switchTab('settings-tab')"
+            id="btn-settings-tab"
+            class="tab-btn"
+            aria-label="Message and SMS Setup"
+            title="Message and SMS Setup"
+          >
+            <span aria-hidden="true">⚙️</span>
+            <span class="nav-label">Message &amp; SMS Setup</span>
+          </button>
+        </div>
+      </nav>
+      <button
+        id="sidebar-backdrop"
+        type="button"
+        onclick="closeMenu()"
+        aria-label="Close section menu"
+      ></button>
+      <main id="main-content" class="max-w-6xl mx-auto p-4 md:p-6">
+      <section id="scan-tab" class="tab-content block space-y-6">
+        <div
+          id="scan-alert"
+          class="hidden p-4 rounded-xl text-center text-lg font-bold shadow-lg transition-all"
+        ></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div
+            class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm space-y-4"
+          >
+            <div class="flex gap-4">
+              <button
+                id="btn-mode-in"
+                onclick="setAttendanceMode('Time IN')"
+                class="flex-1 py-3 text-lg font-bold rounded-xl border-2 border-green-600 bg-green-600 text-white shadow-md"
+              >
+                🟢 TIME IN
+              </button>
+              <button
+                id="btn-mode-out"
+                onclick="setAttendanceMode('Time OUT')"
+                class="flex-1 py-3 text-lg font-bold rounded-xl border-2 border-amber-500 bg-white text-amber-600 hover:bg-amber-50"
+              >
+                🔴 TIME OUT
+              </button>
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700"
+                >Select Input Source:</label
+              >
+              <select
+                id="camera-select"
+                onchange="handleSourceChange()"
+                class="w-full p-3 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="bluetooth">
+                  ⌨️ Bluetooth / Hardware Scanner Mode (No Camera Permission
+                  Required)
+                </option>
+              </select>
+            </div>
+
+            <div
+              id="camera-container"
+              class="relative bg-slate-900 rounded-xl overflow-hidden min-h-[300px] flex flex-col items-center justify-center text-white"
+            >
+              <div id="reader" class="w-full h-full"></div>
+              <p
+                id="camera-fallback-text"
+                class="text-slate-400 text-sm p-4 text-center"
+              >
+                Camera stream will appear here when an active lens is selected
+                above.
+              </p>
+            </div>
+
+            <div id="hardware-scanner-box" class="space-y-2">
+              <label class="block text-sm font-semibold text-blue-700"
+                >Bluetooth/Hardware Scanner Input:</label
+              >
+              <div class="flex gap-2">
+                <input
+                  type="text"
+                  id="hardware-input"
+                  placeholder="Click here & pull scanner trigger or type LRN..."
+                  class="flex-1 p-3 border-2 border-blue-400 rounded-xl focus:ring-2 focus:ring-blue-600 font-mono text-lg"
+                  onkeypress="handleHardwareKeyPress(event)"
+                />
+                <button
+                  onclick="processHardwareInput()"
+                  class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700"
+                >
+                  Submit
+                </button>
+              </div>
+              <p class="text-xs text-gray-500">
+                Point your Bluetooth Scanner Gun here or type student LRN and
+                press Enter.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="bg-white p-6 rounded-2xl shadow-sm space-y-4 flex flex-col justify-between"
+          >
+            <div>
+              <h2 class="text-lg font-bold text-gray-800 border-b pb-2 mb-3">
+                Recent Scans Today
+              </h2>
+              <div
+                id="recent-scans-list"
+                class="space-y-3 max-h-[380px] overflow-y-auto text-sm"
+              >
+                <p class="text-gray-400 text-center py-6">
+                  No scans recorded today yet.
+                </p>
+              </div>
+            </div>
+            <div
+              id="scan-tip"
+              class="bg-slate-50 p-3 rounded-xl border text-xs text-slate-600"
+            >
+              Tip: You can edit notification templates under the Message &amp;
+              SMS Setup tab anytime.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="learners-tab" class="tab-content hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-2xl shadow-sm space-y-4">
+            <h2
+              id="form-title"
+              class="text-lg font-bold text-gray-800 border-b pb-2"
+            >
+              ➕ Add New Learner
+            </h2>
+
+            <form
+              id="learner-form"
+              onsubmit="saveLearner(event)"
+              class="space-y-3"
+            >
+              <input type="hidden" id="edit-original-lrn" />
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1"
+                  >LRN / Student ID *</label
+                >
+                <input
+                  type="text"
+                  id="form-lrn"
+                  required
+                  placeholder="e.g. 10928374001"
+                  class="w-full p-2.5 border rounded-lg font-mono focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1"
+                  >Learner Full Name *</label
+                >
+                <input
+                  type="text"
+                  id="form-name"
+                  required
+                  placeholder="e.g. Juan De La Cruz"
+                  class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1"
+                  >Parent / Guardian Name *</label
+                >
+                <input
+                  type="text"
+                  id="form-parent"
+                  required
+                  placeholder="e.g. Maria De La Cruz"
+                  class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1"
+                  >Registered Parent Phone Number *</label
+                >
+                <input
+                  type="tel"
+                  id="form-phone"
+                  required
+                  placeholder="e.g. 09171234567"
+                  class="w-full p-2.5 border rounded-lg font-mono focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1"
+                  >Class / Section</label
+                >
+                <input
+                  type="text"
+                  id="form-class"
+                  placeholder="e.g. Grade 7 - Section A"
+                  class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div class="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  id="btn-save-learner"
+                  aria-label="Save learner record"
+                  class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700"
+                >
+                  Save Learner
+                </button>
+                <button
+                  type="button"
+                  onclick="resetLearnerForm()"
+                  class="bg-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-300"
+                >
+                  Clear
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div
+            class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm space-y-4"
+          >
+            <div
+              class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-3"
+            >
+              <h2 class="text-lg font-bold text-gray-800">
+                📋 Registered Learners Directory
+              </h2>
+              <div class="flex gap-2">
+                <button
+                  onclick="exportLearnersCSV()"
+                  class="bg-green-600 text-white text-xs px-3 py-2 rounded-lg font-bold hover:bg-green-700"
+                >
+                  Export CSV
+                </button>
+                <button
+                  onclick="printAllLearnerQRCards()"
+                  class="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg font-bold hover:bg-blue-700"
+                >
+                  Print QR Cards
+                </button>
+                <label
+                  class="bg-slate-700 text-white text-xs px-3 py-2 rounded-lg font-bold hover:bg-slate-800 cursor-pointer"
+                >
+                  Import CSV
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onchange="importLearnersCSV(event)"
+                    class="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <input
+              type="text"
+              id="search-learner"
+              onkeyup="renderLearnersTable()"
+              aria-label="Search learner directory"
+              placeholder="🔍 Search by Name, LRN, or Parent..."
+              class="w-full p-2.5 border rounded-lg text-sm mb-2"
+            />
+
+            <div class="overflow-x-auto max-h-[420px]">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead class="bg-slate-100 text-slate-700 sticky top-0">
+                  <tr>
+                    <th class="p-2.5 border-b">LRN</th>
+                    <th class="p-2.5 border-b">Learner Name</th>
+                    <th class="p-2.5 border-b">Parent Name</th>
+                    <th class="p-2.5 border-b">Phone Number</th>
+                    <th class="p-2.5 border-b">Class / Section</th>
+                    <th class="p-2.5 border-b text-center min-w-[108px]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="learners-table-body" class="divide-y"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div
+        id="qr-modal"
+        class="hidden fixed inset-0 z-50 bg-slate-950/60 p-4 flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="qr-modal-title"
+        onclick="if (event.target === this) closeQrModal()"
+      >
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div class="flex items-start justify-between gap-4 border-b pb-3">
+            <div>
+              <h2 id="qr-modal-title" class="text-xl font-bold text-slate-800">Learner QR Code</h2>
+              <p class="mt-1 text-sm text-slate-500">Scan this code to record attendance.</p>
+            </div>
+            <button type="button" onclick="closeQrModal()" class="rounded-lg px-3 py-1 text-2xl leading-none text-slate-500 hover:bg-slate-100" aria-label="Close QR code">&times;</button>
+          </div>
+          <div class="mt-5 flex flex-col items-center">
+            <div id="qr-code-output" class="rounded-xl border-8 border-white bg-white shadow-sm"></div>
+            <div class="mt-5 w-full rounded-xl bg-slate-50 p-4 text-sm">
+              <p><span class="font-semibold text-slate-700">Learner:</span> <span id="qr-learner-name"></span></p>
+              <p class="mt-1"><span class="font-semibold text-slate-700">Parent/Guardian:</span> <span id="qr-parent-name"></span></p>
+              <p class="mt-1"><span class="font-semibold text-slate-700">Grade / Section:</span> <span id="qr-class-name"></span></p>
+              <p class="mt-1"><span class="font-semibold text-slate-700">LRN:</span> <span id="qr-lrn" class="font-mono"></span></p>
+              <p class="mt-1"><span class="font-semibold text-slate-700">QR version:</span> <span id="qr-version" class="font-mono"></span></p>
+            </div>
+            <div class="mt-5 grid w-full grid-cols-2 gap-2">
+              <button type="button" onclick="downloadQrCode()" class="rounded-xl bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-700">Download QR</button>
+              <button type="button" onclick="regenerateCurrentQr()" class="rounded-xl bg-amber-500 px-4 py-3 font-bold text-white hover:bg-amber-600">Regenerate QR</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section id="brigade-tab" class="tab-content hidden space-y-6">
+        <div
+          class="bg-white p-6 rounded-2xl shadow-sm max-w-3xl mx-auto space-y-6"
+        >
+          <div class="border-b pb-3">
+            <h2 class="text-xl font-bold text-red-600 flex items-center gap-2">
+              <span>📢</span> Text Brigade (Emergency Broadcast)
+            </h2>
+            <p class="text-sm text-gray-500">
+              Send an urgent broadcast SMS to all registered parent contact
+              numbers in one click.
+            </p>
+          </div>
+
+          <div
+            class="bg-amber-50 border border-amber-200 p-4 rounded-xl text-sm text-amber-800 flex items-center justify-between"
+          >
+            <div>
+              <strong>Total Audience:</strong>
+              <span
+                id="brigade-recipient-count"
+                class="font-bold text-lg text-amber-900"
+                >0</span
+              >
+              registered parent numbers.
+            </div>
+            <span
+              class="text-xs bg-amber-200 text-amber-900 px-2.5 py-1 rounded-full font-semibold"
+              >Ready</span
+            >
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-sm font-semibold text-gray-700"
+              >Broadcast Message Content:</label
+            >
+            <textarea
+              id="brigade-message"
+              rows="5"
+              class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-red-500 text-base"
+              placeholder="Type emergency alert here (e.g., EMERGENCY ALERT: School classes are suspended today due to heavy rains. Please keep your children safe at home.)"
+            ></textarea>
+          </div>
+
+          <div id="brigade-progress-container" class="hidden space-y-2">
+            <div
+              class="flex justify-between text-xs font-semibold text-gray-600"
+            >
+              <span>Sending Progress...</span>
+              <span id="brigade-progress-text" role="status" aria-live="polite">0 / 0</span>
+            </div>
+            <div
+              id="brigade-progress-track"
+              role="progressbar"
+              aria-label="Broadcast delivery progress"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+              class="w-full bg-gray-200 rounded-full h-3 overflow-hidden"
+            >
+              <div
+                id="brigade-progress-bar"
+                class="bg-red-600 h-3 w-0 transition-all"
+              ></div>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button
+              id="btn-trigger-brigade"
+              onclick="triggerTextBrigade()"
+              type="button"
+              aria-label="Send emergency text broadcast"
+              class="w-full bg-red-600 text-white py-4 rounded-xl text-lg font-bold hover:bg-red-700 shadow-lg flex items-center justify-center gap-2"
+            >
+              <span>🚀</span> DISPATCH EMERGENCY TEXT BRIGADE
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section id="logs-tab" class="tab-content hidden space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm space-y-4">
+          <div
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-3"
+          >
+            <h2 class="text-lg font-bold text-gray-800">
+              📊 Attendance Activity History
+            </h2>
+            <div class="flex gap-2">
+              <button
+                onclick="exportLogsCSV()"
+                class="bg-green-600 text-white text-xs px-3 py-2 rounded-lg font-bold hover:bg-green-700"
+              >
+                Export Selected Report to CSV
+              </button>
+              <button
+                onclick="clearAllLogs()"
+                class="bg-red-100 text-red-700 text-xs px-3 py-2 rounded-lg font-bold hover:bg-red-200"
+              >
+                Clear Logs History
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <input
+              type="text"
+              id="search-logs"
+              oninput="renderLogsTable()"
+              aria-label="Search attendance logs"
+              placeholder="🔍 Search learner, LRN, or mode..."
+              class="w-full p-2.5 border rounded-lg text-sm"
+            />
+            <input
+              type="date"
+              id="filter-log-date"
+              aria-label="Filter attendance by date"
+              onchange="renderLogsTable()"
+              class="w-full p-2.5 border rounded-lg text-sm"
+            />
+            <select
+              id="filter-log-class"
+              aria-label="Filter attendance by class"
+              onchange="renderLogsTable()"
+              class="w-full p-2.5 border rounded-lg text-sm"
+            >
+              <option value="">All classes</option>
+            </select>
+          </div>
+
+            <div class="grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-4">
+            <div>
+              <label for="late-cutoff" class="mb-1 block text-xs font-semibold text-gray-600">
+                Late after
+              </label>
+              <input
+                type="time"
+                id="late-cutoff"
+                value="08:00"
+                onchange="renderLogsTable()"
+                class="w-full rounded-lg border p-2 text-sm"
+              />
+              </div>
+            <div>
+              <label for="report-period" class="mb-1 block text-xs font-semibold text-gray-600">Summary period</label>
+              <select id="report-period" onchange="renderLogsTable()" class="w-full rounded-lg border p-2 text-sm" aria-label="Attendance summary period">
+                <option value="day">Selected day</option>
+                <option value="week">Last 7 days</option>
+                <option value="month">This month</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <p class="mb-1 text-xs font-semibold text-gray-600">Mark absent manually</p>
+              <div class="flex flex-col gap-2 sm:flex-row">
+                <select
+                  id="absence-learner"
+                  aria-label="Learner to mark absent"
+                  class="min-w-0 flex-1 rounded-lg border p-2 text-sm"
+                >
+                  <option value="">Select a learner</option>
+                </select>
+                <button
+                  type="button"
+                  onclick="markLearnerAbsent()"
+                  class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Mark absent
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 lg:grid-cols-6">
+            <div class="rounded-xl border bg-white p-4">
+              <p class="text-xs font-semibold text-gray-500">Present</p>
+              <p id="report-present" class="mt-1 text-2xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="rounded-xl border bg-white p-4">
+              <p class="text-xs font-semibold text-gray-500">Absent / no check-in</p>
+              <p id="report-absent" class="mt-1 text-2xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="rounded-xl border bg-white p-4">
+              <p class="text-xs font-semibold text-gray-500">Late</p>
+              <p id="report-late" class="mt-1 text-2xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="rounded-xl border bg-white p-4">
+              <p class="text-xs font-semibold text-gray-500">Checked out</p>
+              <p id="report-checked-out" class="mt-1 text-2xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="rounded-xl border bg-white p-4">
+              <p class="text-xs font-semibold text-gray-500">Attendance rate</p>
+              <p id="report-rate" class="mt-1 text-2xl font-bold text-gray-800">0%</p>
+            </div>
+            <div class="rounded-xl border bg-white p-4">
+              <p class="text-xs font-semibold text-gray-500">Roster size</p>
+              <p id="report-roster" class="mt-1 text-2xl font-bold text-gray-800">0</p>
+            </div>
+          </div>
+          <p id="report-scope" class="text-xs text-gray-500"></p>
+
+          <div class="overflow-x-auto max-h-[500px]">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead class="bg-slate-100 text-slate-700 sticky top-0">
+                <tr>
+                  <th class="p-2.5 border-b">Date &amp; Time</th>
+                  <th class="p-2.5 border-b">LRN</th>
+                  <th class="p-2.5 border-b">Learner Name</th>
+                  <th class="p-2.5 border-b">Class / Section</th>
+                  <th class="p-2.5 border-b">Mode</th>
+                  <th class="p-2.5 border-b">Parent Contact</th>
+                  <th class="p-2.5 border-b">SMS Dispatch</th>
+                  <th class="p-2.5 border-b text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="logs-table-body" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings-tab" class="tab-content hidden space-y-6">
+        <div
+          class="bg-white p-6 rounded-2xl shadow-sm max-w-3xl mx-auto space-y-6"
+        >
+          <h2 class="text-xl font-bold text-gray-800 border-b pb-3">
+            ⚙️ SMS Gateway &amp; Message Prompt Setup
+          </h2>
+
+          <div class="space-y-4">
+            <h3
+              class="text-sm font-bold text-gray-700 uppercase tracking-wider"
+            >
+              Editable Automated Text Prompts
+            </h3>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1"
+                >TIME IN Message Template:</label
+              >
+              <textarea
+                id="template-timein"
+                rows="3"
+                class="w-full p-3 border rounded-xl font-sans text-sm focus:ring-2 focus:ring-blue-500"
+              >Dear {parent}, your child {name} (LRN: {lrn}) safely checked IN at school on {date} at {time}.</textarea>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1"
+                >TIME OUT Message Template:</label
+              >
+              <textarea
+                id="template-timeout"
+                rows="3"
+                class="w-full p-3 border rounded-xl font-sans text-sm focus:ring-2 focus:ring-blue-500"
+              >Dear {parent}, your child {name} (LRN: {lrn}) checked OUT of school on {date} at {time}. Have a safe commute!</textarea>
+            </div>
+
+            <div
+              class="bg-slate-100 p-3 rounded-xl text-xs text-slate-600 space-y-1"
+            >
+              <strong>Available Dynamic Tags:</strong>
+              <div class="flex flex-wrap gap-2 pt-1">
+                <span class="bg-white px-2 py-0.5 border rounded font-mono"
+                  >{name}</span
+                >
+                <span class="bg-white px-2 py-0.5 border rounded font-mono"
+                  >{parent}</span
+                >
+                <span class="bg-white px-2 py-0.5 border rounded font-mono"
+                  >{lrn}</span
+                >
+                <span class="bg-white px-2 py-0.5 border rounded font-mono"
+                  >{time}</span
+                >
+                <span class="bg-white px-2 py-0.5 border rounded font-mono"
+                  >{date}</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4 border-t pt-4">
+            <h3
+              class="text-sm font-bold text-gray-700 uppercase tracking-wider"
+            >
+              SMS Dispatch Connection
+            </h3>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1"
+                >Select Gateway Mode:</label
+              >
+              <select
+                id="sms-mode"
+                onchange="toggleSmsModeUI()"
+                class="w-full p-3 border rounded-xl bg-slate-50"
+              >
+                <option value="webhook">
+                  🌐 Real SMS via Backend (Recommended)
+                </option>
+                <option value="simulation">
+                  🧪 Simulation Mode (Testing Only)
+                </option>
+              </select>
+            </div>
+
+            <div id="webhook-settings-box" class="hidden space-y-2">
+              <label class="block text-xs font-semibold text-gray-600 mb-1"
+                >Backend SMS Endpoint:</label
+              >
+              <input
+                type="url"
+                id="sms-webhook-url"
+                placeholder="http://localhost:3000/api/sms/send"
+                class="w-full p-3 border rounded-xl font-mono text-sm"
+              />
+              <p class="text-xs text-gray-500">
+                The backend sends through your configured Philippine SMS provider.
+              </p>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Backend client token (optional):</label>
+              <input type="password" id="sms-client-token" placeholder="Matches SMS_CLIENT_TOKEN in backend .env" class="w-full p-3 border rounded-xl font-mono text-sm" />
+            </div>
+          </div>
+
+          <button
+            onclick="saveSettings()"
+            class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700"
+          >
+            Save System Settings
+          </button>
+
+          <div class="space-y-3 border-t pt-4">
+            <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider">Data protection &amp; backup</h3>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label for="retention-days" class="mb-1 block text-xs font-semibold text-gray-600">Automatically keep logs for (days)</label>
+                <input id="retention-days" type="number" min="0" max="3650" placeholder="0 = keep forever" class="w-full rounded-xl border p-3" />
+              </div>
+              <div class="flex items-end">
+                <p class="text-xs text-gray-500">Backups include learners, attendance, settings, audit history, and pending offline messages.</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <button type="button" onclick="downloadSystemBackup()" class="rounded-xl bg-slate-700 px-3 py-3 text-sm font-bold text-white hover:bg-slate-800">Download Backup</button>
+              <label class="cursor-pointer rounded-xl bg-slate-200 px-3 py-3 text-center text-sm font-bold text-slate-700 hover:bg-slate-300">Restore Backup<input type="file" accept="application/json" onchange="restoreSystemBackup(event)" class="hidden" /></label>
+              <button type="button" onclick="clearOldLogs()" class="rounded-xl bg-amber-100 px-3 py-3 text-sm font-bold text-amber-800 hover:bg-amber-200">Apply Retention</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      </main>
+    </div>
+
+    
+      <script src="app.js"></script>
+  </body>
+</html>
