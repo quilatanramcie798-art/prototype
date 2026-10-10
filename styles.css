@@ -824,36 +824,26 @@
         white-space: nowrap;
       }
       .auth-google-wrap {
-        position: relative;
         display: flex;
-        width: 48px;
-        height: 48px;
+        width: min(100%, 280px);
+        min-height: 44px;
         margin: 0 auto;
         align-items: center;
         justify-content: center;
-        overflow: hidden;
-        border-radius: 50%;
-        background: #fff;
+        overflow: visible;
+        border-radius: 0.75rem;
+        background: transparent;
       }
       #gsi-button,
       #signup-gsi-button {
-        position: absolute;
-        inset: 0;
-        z-index: 1;
         display: flex;
-        width: 48px;
-        height: 48px;
+        width: 100%;
+        min-height: 44px;
         align-items: center;
         justify-content: center;
       }
-      .auth-google-wrap iframe { opacity: 0; }
-      .auth-google-logo {
-        position: absolute;
-        z-index: 2;
-        width: 23px;
-        height: 23px;
-        pointer-events: none;
-      }
+      .auth-google-wrap iframe { max-width: 100%; }
+      .auth-google-logo { display: none; }
       .auth-divider {
         display: flex;
         align-items: center;
@@ -927,9 +917,17 @@
         }
         .auth-form-options { align-items: flex-start; flex-direction: column; gap: 0.45rem; }
       }
-      @media (max-height: 700px) {
-        #auth-screen { place-items: start center; }
-        .auth-card-frame { margin-top: 0.5rem; margin-bottom: 0.5rem; }
+      @media (max-height: 820px) {
+        #auth-screen {
+          place-items: start center;
+          padding-block: 0.75rem;
+        }
+        .auth-card-frame { margin-top: 0.25rem; margin-bottom: 0.25rem; }
+        .auth-card { padding-top: 1.6rem; padding-bottom: 1.25rem; }
+        .auth-brand-mark { width: 56px; height: 56px; margin-bottom: 0.65rem; }
+        .auth-description { margin-bottom: 1rem; }
+        .auth-divider { margin: 0.85rem 0; }
+        .auth-signup-prompt { margin-bottom: 0.75rem; }
       }
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after {

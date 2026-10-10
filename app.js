@@ -139,11 +139,11 @@
         });
         google.accounts.id.renderButton(
           document.getElementById("gsi-button"),
-          { type: "icon", theme: "outline", size: "large", shape: "circle" },
+          { theme: "outline", size: "large", text: "signin_with", shape: "pill", width: 280 },
         );
         google.accounts.id.renderButton(
           document.getElementById("signup-gsi-button"),
-          { type: "icon", theme: "outline", size: "large", shape: "circle" },
+          { theme: "outline", size: "large", text: "signin_with", shape: "pill", width: 280 },
         );
       }
 
