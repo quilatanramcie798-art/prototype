@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script
       src="https://accounts.google.com/gsi/client"
       defer
@@ -874,6 +875,12 @@
     </div>
 
     
+      <script>
+        // The Supabase URL and publishable key are designed for browser use.
+        // Never place the Supabase service_role/secret key in this file.
+        window.SUPABASE_URL = "https://oinxtzixtehvoiojvana.supabase.co";
+        window.SUPABASE_PUBLISHABLE_KEY = "PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE";
+      </script>
       <script src="app.js"></script>
   </body>
 </html>

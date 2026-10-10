@@ -45,6 +45,9 @@
       let currentUserEmail = null;
       let authToken = null;
       const API_BASE_URL = window.ATTENDANCE_API_URL || "http://localhost:3000";
+      const SUPABASE_URL = window.SUPABASE_URL || "";
+      const SUPABASE_PUBLISHABLE_KEY = window.SUPABASE_PUBLISHABLE_KEY || "";
+      let supabaseAuthClient = null;
       let auditTrail = JSON.parse(localStorage.getItem("sys_audit_trail")) || [];
       let pendingSmsQueue = JSON.parse(localStorage.getItem("sys_pending_sms")) || [];
       if (settings.mode === "simulation") settings.mode = "webhook";
@@ -105,6 +108,24 @@
 
       window.addEventListener("online", flushPendingSms);
 
+      function getSupabaseAuthClient() {
+        if (supabaseAuthClient) return supabaseAuthClient;
+        if (!window.supabase?.createClient) {
+          throw new Error("Supabase sign-in library did not load. Check your internet connection.");
+        }
+        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY.includes("PASTE_YOUR_")) {
+          throw new Error("Add your Supabase project publishable key in frontend/index.html before using Google sign-in.");
+        }
+        supabaseAuthClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+            detectSessionInUrl: false,
+          },
+        });
+        return supabaseAuthClient;
+      }
+
       function initializeGoogleSignIn() {
         if (!window.google?.accounts?.id) {
           showGoogleSignInError();
@@ -126,16 +147,50 @@
         );
       }
 
-      function handleGoogleSignIn(response) {
+      async function handleGoogleSignIn(response) {
         if (!response || !response.credential) {
           showGoogleSignInError();
           return;
         }
-        // A Google ID token must be verified by the backend before it can
-        // grant access. This API currently supports email/password login only.
         const error = document.getElementById("auth-error");
-        error.innerText = "Google sign-in is not connected to the server yet. Please sign in with your administrator email and password.";
-        error.classList.remove("hidden");
+        error.classList.add("hidden");
+        try {
+          const supabaseClient = getSupabaseAuthClient();
+          const { data, error: providerError } = await supabaseClient.auth.signInWithIdToken({
+            provider: "google",
+            token: response.credential,
+          });
+          if (providerError) throw providerError;
+
+          const accessToken = data.session?.access_token;
+          if (!accessToken) throw new Error("Supabase did not return a sign-in session.");
+
+          const apiResponse = await fetch(`${API_BASE_URL}/api/auth/supabase`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accessToken }),
+          });
+          const result = await apiResponse.json().catch(() => ({}));
+          if (!apiResponse.ok || !result.token || !result.user || !["admin", "staff", "viewer"].includes(result.user.role)) {
+            throw new Error(result.error || "This Google account is not authorized for the attendance system.");
+          }
+
+          authToken = result.token;
+          const session = { token: result.token, user: result.user, signedInAt: new Date().toISOString() };
+          if (document.getElementById("auth-remember")?.checked) {
+            localStorage.setItem("sys_auth_session", JSON.stringify(session));
+            sessionStorage.removeItem("sys_auth_session");
+          } else {
+            sessionStorage.setItem("sys_auth_session", JSON.stringify(session));
+            localStorage.removeItem("sys_auth_session");
+          }
+          enterApp(result.user.role, result.user.email);
+        } catch (signInError) {
+          error.innerText = signInError instanceof TypeError
+            ? "Could not reach the sign-in server. Check that the backend is running and try again."
+            : signInError.message;
+          error.classList.remove("hidden");
+        }
       }
 
       function continueAsGuest() {
@@ -280,6 +335,7 @@
         if (window.google?.accounts?.id) {
           google.accounts.id.disableAutoSelect();
         }
+        if (supabaseAuthClient) void supabaseAuthClient.auth.signOut();
         accessMode = null;
         currentUserEmail = null;
         authToken = null;
