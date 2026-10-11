@@ -134,7 +134,7 @@
 
         google.accounts.id.initialize({
           client_id:
-            "353978343877-cejn953ik7l7uqs7203sdr8asv2t72uc.apps.googleusercontent.com",
+            "353978343877-7n0llap5cl799je93098umu1473lo40p.apps.googleusercontent.com",
           callback: handleGoogleSignIn,
         });
         google.accounts.id.renderButton(
